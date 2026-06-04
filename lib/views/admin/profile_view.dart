@@ -22,11 +22,8 @@ class _ProfileViewState extends State<ProfileView> {
   void initState() {
     super.initState();
     _profileController = ProfileController();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _profileController.getProfile(widget.token);
-      }
+      if (mounted) _profileController.getProfile(widget.token);
     });
   }
 
@@ -42,7 +39,6 @@ class _ProfileViewState extends State<ProfileView> {
       MaterialPageRoute(builder: (_) => const RoleView()),
       (route) => false,
     );
-
     Future.microtask(() {
       if (!mounted) return;
       Navigator.push(
@@ -51,10 +47,40 @@ class _ProfileViewState extends State<ProfileView> {
       );
     });
   }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Keluar dari Akun?",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+            "Kamu akan keluar dari akun ini. Yakin ingin melanjutkan?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xffD90404),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
+            ),
+            child: const Text("Keluar",
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) _handleLogout(context);
+  }
+
   Future<void> _refreshProfile() async {
-    if (mounted) {
-      await _profileController.getProfile(widget.token);
-    }
+    if (mounted) await _profileController.getProfile(widget.token);
   }
 
   @override
@@ -80,58 +106,41 @@ class _ProfileViewState extends State<ProfileView> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.gpp_bad_rounded,
-                        color: Colors.redAccent,
-                        size: 64,
-                      ),
+                      const Icon(Icons.gpp_bad_rounded,
+                          color: Colors.redAccent, size: 64),
                       const SizedBox(height: 16),
-                      const Text(
-                        "Gagal Memuat Profil",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xff004080),
-                        ),
-                      ),
+                      const Text("Gagal Memuat Profil",
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xff004080))),
                       const SizedBox(height: 8),
-                      Text(
-                        controller.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
+                      Text(controller.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14)),
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _refreshProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff0066FF),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 12,
-                          ),
+                              horizontal: 32, vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text(
-                          "Coba Lagi",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text("Coba Lagi",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => _handleLogout(context),
-                        child: const Text(
-                          "Kembali ke Awal",
-                          style: TextStyle(color: Color(0xff0066FF)),
-                        ),
+                        child: const Text("Kembali ke Awal",
+                            style: TextStyle(color: Color(0xff0066FF))),
                       ),
                     ],
                   ),
@@ -146,24 +155,28 @@ class _ProfileViewState extends State<ProfileView> {
                 Positioned(
                   top: 150,
                   left: -40,
-                  child: _buildBgCircle(const Color(0xff0066FF).withOpacity(0.1), 110),
+                  child: _buildBgCircle(
+                      const Color(0xff0066FF).withOpacity(0.1), 110),
                 ),
                 Positioned(
                   top: -30,
                   right: 40,
-                  child: _buildBgCircle(const Color(0xff0066FF).withOpacity(0.1), 130),
+                  child: _buildBgCircle(
+                      const Color(0xff0066FF).withOpacity(0.1), 130),
                 ),
                 Positioned(
                   top: 240,
                   right: -50,
-                  child: _buildBgCircle(const Color(0xff0066FF).withOpacity(0.15), 140),
+                  child: _buildBgCircle(
+                      const Color(0xff0066FF).withOpacity(0.15), 140),
                 ),
                 SafeArea(
                   child: RefreshIndicator(
                     onRefresh: _refreshProfile,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 25),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 25),
                       child: Column(
                         children: [
                           Text(
@@ -175,24 +188,19 @@ class _ProfileViewState extends State<ProfileView> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          
                           Stack(
                             alignment: Alignment.bottomRight,
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
+                                    color: Colors.white,
+                                    shape: BoxShape.circle),
                                 child: CircleAvatar(
                                   radius: 75,
                                   backgroundColor: Colors.blue.shade50,
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 80,
-                                    color: Color(0xff004080),
-                                  ),
+                                  child: const Icon(Icons.person,
+                                      size: 80, color: Color(0xff004080)),
                                 ),
                               ),
                               Container(
@@ -200,41 +208,42 @@ class _ProfileViewState extends State<ProfileView> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xff3B97FF),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
+                                  border: Border.all(
+                                      color: Colors.white, width: 2),
                                 ),
-                                child: const Icon(Icons.edit, size: 18, color: Colors.white),
+                                child: const Icon(Icons.edit,
+                                    size: 18, color: Colors.white),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 28, vertical: 6),
                             decoration: BoxDecoration(
                               color: const Color(0xff3B97FF),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              "Admin",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
+                            child: const Text("Admin",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14)),
                           ),
                           const SizedBox(height: 30),
-
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.blueGrey.shade50, width: 1.5),
+                              border: Border.all(
+                                  color: Colors.blueGrey.shade50, width: 1.5),
                             ),
                             child: Column(
                               children: [
                                 _buildRow("Nama", admin?.name ?? "-"),
                                 _buildDivider(),
-                                _buildRow("No.Telepon", admin?.phone ?? "-"),
+                                _buildRow(
+                                    "No.Telepon", admin?.phone ?? "-"),
                                 _buildDivider(),
                                 _buildRow("ID", "#${admin?.id ?? "-"}"),
                                 _buildDivider(),
@@ -242,8 +251,9 @@ class _ProfileViewState extends State<ProfileView> {
                                   "Bergabung",
                                   admin?.createdAt != null
                                       ? DateFormat('d MMM yyyy').format(
-                                          DateTime.tryParse(admin!.createdAt!) ?? DateTime.now(),
-                                        )
+                                          DateTime.tryParse(
+                                                  admin!.createdAt!) ??
+                                              DateTime.now())
                                       : "-",
                                 ),
                               ],
@@ -256,60 +266,61 @@ class _ProfileViewState extends State<ProfileView> {
                               await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => ChangeNotifierProvider<ProfileController>.value(
+                                  builder: (_) =>
+                                      ChangeNotifierProvider<ProfileController>.value(
                                     value: _profileController,
-                                    child: EditProfileView(token: widget.token),
+                                    child:
+                                        EditProfileView(token: widget.token),
                                   ),
                                 ),
                               );
-                              
                               _refreshProfile();
                             },
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 54),
-                              side: BorderSide(color: Colors.blueGrey.shade100, width: 1.5),
+                              side: BorderSide(
+                                  color: Colors.blueGrey.shade100, width: 1.5),
                               backgroundColor: const Color(0xffF8FAFC),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.edit_square, color: Color(0xff004080), size: 20),
+                                Icon(Icons.edit_square,
+                                    color: Color(0xff004080), size: 20),
                                 SizedBox(width: 8),
-                                Text(
-                                  "Edit Profil",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xff004080),
-                                    fontSize: 15,
-                                  ),
-                                ),
+                                Text("Edit Profil",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xff004080),
+                                        fontSize: 15)),
                               ],
                             ),
                           ),
                           const SizedBox(height: 14),
 
+                          // LOGOUT dengan konfirmasi
                           ElevatedButton(
-                            onPressed: () => _handleLogout(context),
+                            onPressed: () => _confirmLogout(context),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 54),
                               backgroundColor: const Color(0xffD90404),
                               elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                                Icon(Icons.logout_rounded,
+                                    color: Colors.white, size: 20),
                                 SizedBox(width: 8),
-                                Text(
-                                  "Keluar dari Akun",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
+                                Text("Keluar dari Akun",
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15)),
                               ],
                             ),
                           ),
@@ -339,7 +350,8 @@ class _ProfileViewState extends State<ProfileView> {
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Divider(color: Colors.grey.shade200, height: 1, thickness: 1),
+      child: Divider(
+          color: Colors.grey.shade200, height: 1, thickness: 1),
     );
   }
 
@@ -349,22 +361,16 @@ class _ProfileViewState extends State<ProfileView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xff0B2240),
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xff1A5699),
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
+          Text(label,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff0B2240),
+                  fontSize: 14)),
+          Text(value,
+              style: const TextStyle(
+                  color: Color(0xff1A5699),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14)),
         ],
       ),
     );

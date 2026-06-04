@@ -16,7 +16,7 @@ class LayananAdminView extends StatefulWidget {
 
 class _LayananAdminViewState extends State<LayananAdminView> {
   final searchC = TextEditingController();
-  String searchQuery = ""; 
+  String searchQuery = "";
 
   @override
   void initState() {
@@ -136,6 +136,7 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                               content: Text("Layanan berhasil dihapus"),
                             ),
                           );
+                          // 🔹 Refresh list setelah hapus
                           provider.getLayanan(widget.token);
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -262,16 +263,24 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                               .read<LayananController>()
                               .getLayanan(widget.token),
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                            padding:
+                                const EdgeInsets.fromLTRB(20, 10, 20, 100),
                             itemCount: filteredLayanan.length,
                             itemBuilder: (context, index) {
                               final item = filteredLayanan[index];
 
                               IconData iconLayanan = Icons.home_rounded;
-                              if (item['name'].toString().toLowerCase().contains('komersial')) {
+                              if (item['name']
+                                  .toString()
+                                  .toLowerCase()
+                                  .contains('komersial')) {
                                 iconLayanan = Icons.business_rounded;
-                              } else if (item['name'].toString().toLowerCase().contains('industri')) {
-                                iconLayanan = Icons.precision_manufacturing_rounded;
+                              } else if (item['name']
+                                  .toString()
+                                  .toLowerCase()
+                                  .contains('industri')) {
+                                iconLayanan =
+                                    Icons.precision_manufacturing_rounded;
                               }
 
                               return Container(
@@ -292,13 +301,15 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: const Color(0xff0066FF),
-                                            borderRadius: BorderRadius.circular(14),
+                                            borderRadius:
+                                                BorderRadius.circular(14),
                                           ),
                                           child: Icon(
                                             iconLayanan,
@@ -309,16 +320,20 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.symmetric(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
                                                   horizontal: 8,
                                                   vertical: 4,
                                                 ),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(0xffEAF9F1),
-                                                  borderRadius: BorderRadius.circular(6),
+                                                  color:
+                                                      const Color(0xffEAF9F1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
                                                 ),
                                                 child: const Text(
                                                   "ACTIVE",
@@ -341,7 +356,6 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                             ],
                                           ),
                                         ),
-                                        
                                         IconButton(
                                           icon: const Icon(
                                             Icons.edit_note_rounded,
@@ -352,12 +366,15 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => EditLayananView(
+                                                builder: (context) =>
+                                                    EditLayananView(
                                                   dataLayanan: item,
-                                                  token: widget.token, layananData: item, 
+                                                  token: widget.token,
+                                                  layananData: item,
                                                 ),
                                               ),
                                             ).then((value) {
+                                              // 🔹 Refresh jika ada perubahan (value == true)
                                               if (context.mounted) {
                                                 context
                                                     .read<LayananController>()
@@ -384,7 +401,8 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                     ),
                                     const SizedBox(height: 16),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         const Text(
                                           "PENGGUNAAN",
@@ -405,7 +423,8 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                     ),
                                     const SizedBox(height: 12),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         const Text(
                                           "HARGA PER M³",
@@ -427,7 +446,8 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                     ),
                                     const Divider(height: 24, thickness: 1),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         SizedBox(
                                           width: 60,
@@ -438,21 +458,27 @@ class _LayananAdminViewState extends State<LayananAdminView> {
                                                 left: 0,
                                                 child: CircleAvatar(
                                                   radius: 11,
-                                                  backgroundColor: const Color(0xff0066FF).withOpacity(0.2),
+                                                  backgroundColor: const Color(
+                                                          0xff0066FF)
+                                                      .withOpacity(0.2),
                                                 ),
                                               ),
                                               Positioned(
                                                 left: 12,
                                                 child: CircleAvatar(
                                                   radius: 11,
-                                                  backgroundColor: const Color(0xff0066FF).withOpacity(0.4),
+                                                  backgroundColor: const Color(
+                                                          0xff0066FF)
+                                                      .withOpacity(0.4),
                                                 ),
                                               ),
                                               Positioned(
                                                 left: 24,
                                                 child: CircleAvatar(
                                                   radius: 11,
-                                                  backgroundColor: const Color(0xff0066FF).withOpacity(0.6),
+                                                  backgroundColor: const Color(
+                                                          0xff0066FF)
+                                                      .withOpacity(0.6),
                                                 ),
                                               ),
                                             ],
@@ -487,10 +513,16 @@ class _LayananAdminViewState extends State<LayananAdminView> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => TambahLayananView(token: widget.token, dataLayanan: const {}),
+              builder: (context) => TambahLayananView(
+                token: widget.token,
+                dataLayanan: const {}, // 🔹 Map kosong = mode tambah
+              ),
             ),
           ).then((value) {
-            context.read<LayananController>().getLayanan(widget.token);
+            // 🔹 Refresh list jika kembali dari halaman tambah/edit
+            if (context.mounted) {
+              context.read<LayananController>().getLayanan(widget.token);
+            }
           });
         },
         child: const Icon(Icons.add, color: Colors.white, size: 30),

@@ -11,15 +11,16 @@ class TambahCustomerView extends StatefulWidget {
 }
 
 class _TambahCustomerViewState extends State<TambahCustomerView> {
-  final usernameC = TextEditingController();
-  final passwordC = TextEditingController();
+  final usernameC       = TextEditingController();
+  final passwordC       = TextEditingController();
+  final nameC           = TextEditingController();
   final customerNumberC = TextEditingController();
-  final nameC = TextEditingController();
-  final phoneC = TextEditingController();
-  final addressC = TextEditingController();
+  final phoneC          = TextEditingController();
+  final addressC        = TextEditingController();
 
-  int? selectedServiceId;
-  bool loading = false;
+  int?  selectedServiceId;
+  bool  loading         = false;
+  bool  obscurePassword = true;
 
   @override
   void initState() {
@@ -33,32 +34,29 @@ class _TambahCustomerViewState extends State<TambahCustomerView> {
   void dispose() {
     usernameC.dispose();
     passwordC.dispose();
-    customerNumberC.dispose();
     nameC.dispose();
+    customerNumberC.dispose();
     phoneC.dispose();
     addressC.dispose();
     super.dispose();
   }
 
   Future<void> handleSaveCustomer() async {
-    if (usernameC.text.trim().isEmpty || passwordC.text.trim().isEmpty || nameC.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Username, Password, dan Nama tidak boleh kosong"), backgroundColor: Colors.red),
-      );
+    if (usernameC.text.trim().isEmpty ||
+        passwordC.text.trim().isEmpty ||
+        nameC.text.trim().isEmpty) {
+      _showSnackBar("Username, Password, dan Nama tidak boleh kosong",
+          isError: true);
       return;
     }
 
-    if (passwordC.text.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password harus minimal 8 karakter"), backgroundColor: Colors.red),
-      );
+    if (passwordC.text.trim().length < 8) {
+      _showSnackBar("Password harus minimal 8 karakter", isError: true);
       return;
     }
 
     if (selectedServiceId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pilih jenis layanan terlebih dahulu"), backgroundColor: Colors.red),
-      );
+      _showSnackBar("Pilih jenis layanan terlebih dahulu", isError: true);
       return;
     }
 
@@ -66,38 +64,47 @@ class _TambahCustomerViewState extends State<TambahCustomerView> {
 
     try {
       final controller = context.read<CustomerAdminController>();
-      String cleanUsername = usernameC.text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
+
+      final cleanUsername = usernameC.text
+          .trim()
+          .toLowerCase()
+          .replaceAll(RegExp(r'\s+'), '');
 
       final result = await controller.saveCustomer(
-        token: widget.token,
-        username: cleanUsername,
-        password: passwordC.text,
-        name: nameC.text.trim(),
+        token:          widget.token,
+        username:       cleanUsername,
+        password:       passwordC.text.trim(),
+        name:           nameC.text.trim(),
         customerNumber: customerNumberC.text.trim(),
-        phone: phoneC.text.trim(),
-        address: addressC.text.trim(),
-        serviceId: selectedServiceId!,
+        phone:          phoneC.text.trim(),
+        address:        addressC.text.trim(),
+        serviceId:      selectedServiceId!,
       );
 
       if (!mounted) return;
 
       if (result["success"] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Berhasil mendaftarkan customer baru!"), backgroundColor: Colors.green),
-        );
+        _showSnackBar("Customer berhasil didaftarkan!");
         Navigator.pop(context, true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result["message"] ?? "Gagal menyimpan data"), backgroundColor: Colors.red),
-        );
+        _showSnackBar(result["message"] ?? "Gagal menyimpan data",
+            isError: true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Terjadi kesalahan sistem: ${e.toString()}"), backgroundColor: Colors.red),
-      );
+      _showSnackBar("Terjadi kesalahan sistem: ${e.toString()}", isError: true);
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+      ),
+    );
   }
 
   @override
@@ -110,30 +117,82 @@ class _TambahCustomerViewState extends State<TambahCustomerView> {
         backgroundColor: const Color(0xffF2F8FC),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text("Tambah Customer", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        title: const Text(
+          "Tambah Customer",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInputField("Username (Otomatis huruf kecil tanpa spasi)", "Contoh : bidin123", usernameC),
-            _buildInputField("Password", "Minimal 8 Karakter", passwordC, isPassword: true),
-            _buildInputField("Nama Lengkap", "Masukkan nama", nameC),
-            _buildInputField("NIK / No. Meter", "Nomor Induk Kependudukan", customerNumberC, keyboardType: TextInputType.number),
-            _buildInputField("No. Telepon", "Contoh: 0812345678", phoneC, keyboardType: TextInputType.phone),
-            _buildInputField("Alamat", "Tuliskan Alamat Lengkap", addressC, maxLines: 3),
-            
-            const Text("Layanan", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xff1E293B))),
-            const SizedBox(height: 8),
-            
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xffE6F1FB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xffB5D4F4)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Icon(Icons.info_outline_rounded,
+                      color: Color(0xff185FA5), size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Setelah disimpan, customer langsung terdaftar dan dapat login menggunakan username & password yang diisi di form ini.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xff185FA5),
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            _sectionTitle("Akun Login Customer"),
+            _buildInputField("Username",
+                "Contoh: bidin123 (huruf kecil, tanpa spasi)", usernameC),
+            _buildPasswordField(),
+
+            _sectionTitle("Data Pelanggan"),
+            _buildInputField("Nama Lengkap", "Masukkan nama lengkap", nameC),
+            _buildInputField(
+                "NIK / No. Meter", "Nomor Induk Kependudukan atau No. Meter",
+                customerNumberC,
+                keyboardType: TextInputType.number),
+            _buildInputField("No. Telepon", "Contoh: 081335810890", phoneC,
+                keyboardType: TextInputType.phone),
+            _buildInputField("Alamat", "Tuliskan alamat lengkap", addressC,
+                maxLines: 3),
+
+            _sectionTitle("Layanan"),
+            const Text("Pilih paket layanan yang diambil customer",
+                style: TextStyle(fontSize: 12, color: Colors.black54)),
+            const SizedBox(height: 10),
+
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(color: const Color(0xffE6E6E6), borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xffE6E6E6),
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: controller.isLoadingServices
                   ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                      padding: EdgeInsets.all(14),
+                      child: Center(
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
                     )
                   : DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
@@ -146,65 +205,150 @@ class _TambahCustomerViewState extends State<TambahCustomerView> {
                             child: Text(e.name),
                           );
                         }).toList(),
-                        onChanged: (val) => setState(() => selectedServiceId = val),
+                        onChanged: (val) =>
+                            setState(() => selectedServiceId = val),
                       ),
                     ),
             ),
-            
+
             const SizedBox(height: 36),
-            
+
             SizedBox(
-              width: double.infinity, 
+              width: double.infinity,
               height: 52,
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.red),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Batal", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                child: const Text("Batal",
+                    style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
               ),
             ),
             const SizedBox(height: 12),
+
             SizedBox(
-              width: double.infinity, 
+              width: double.infinity,
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff0066FF), 
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  backgroundColor: const Color(0xff0066FF),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
                 onPressed: loading ? null : handleSaveCustomer,
-                child: loading 
-                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                    : const Text("Simpan Customer", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                child: loading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text("Simpan & Daftarkan Customer",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
               ),
             ),
+
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInputField(String title, String hint, TextEditingController controller, {bool isPassword = false, TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Color(0xff0066FF),
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField(
+    String title,
+    String hint,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xff1E293B))),
+        Text(title,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Color(0xff1E293B))),
         const SizedBox(height: 8),
         TextField(
-          controller: controller, 
-          obscureText: isPassword, 
+          controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
           decoration: InputDecoration(
-            hintText: hint, 
-            filled: true, 
+            hintText: hint,
+            filled: true,
             fillColor: const Color(0xffE6E6E6),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          )
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Password",
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Color(0xff1E293B))),
+        const SizedBox(height: 8),
+        TextField(
+          controller: passwordC,
+          obscureText: obscurePassword,
+          keyboardType: TextInputType.visiblePassword,
+          decoration: InputDecoration(
+            hintText: "Minimal 8 karakter",
+            filled: true,
+            fillColor: const Color(0xffE6E6E6),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.grey,
+                size: 20,
+              ),
+              onPressed: () =>
+                  setState(() => obscurePassword = !obscurePassword),
+            ),
+          ),
         ),
         const SizedBox(height: 18),
       ],

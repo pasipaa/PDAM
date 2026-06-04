@@ -1,29 +1,28 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart'; 
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ukl_mobile_uiux/models/customers/customer_profile_models.dart';
 import 'package:ukl_mobile_uiux/models/customers/customer_tagihan_models.dart';
 import 'package:ukl_mobile_uiux/services/url.dart' as url;
 
-// 1. Tambahkan 'with ChangeNotifier' agar bisa terintegrasi dengan Provider
 class CustomerController with ChangeNotifier {
   final String baseUrl = url.BaseUrl;
   final String appKey = url.AppKey;
 
-  // 2. Deklarasikan variabel state internal yang sesungguhnya
   CustomerProfile? _profile;
   String? _errorMessage;
   bool _isLoading = false;
   List<CustomerBill> _bills = [];
+  List<CustomerPayment> _payments = [];
 
-  // 3. Buat Getter yang mengembalikan variabel internal (bukan null lagi!)
   CustomerProfile? get profile => _profile;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   List<CustomerBill> get bills => _bills;
+  List<CustomerPayment> get payments => _payments;
 
   get customers => null;
 
@@ -33,29 +32,29 @@ class CustomerController with ChangeNotifier {
     return prefs.getString('auth_token') ?? '';
   }
 
-  // 4. Update getMyProfile agar menyimpan data ke state dan memicu notifyListeners()
   Future<CustomerProfile?> getMyProfile(String token) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners(); // Beritahu UI untuk menampilkan loading spinner
+    notifyListeners();
 
     try {
       final String activeToken = await _getToken(token);
       final uri = Uri.parse("$baseUrl/customers/me");
 
-      final response = await http.get(
-        uri,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": "Bearer $activeToken",
-          "app-key": appKey, 
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "Bearer $activeToken",
+              "app-key": appKey,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        
         if (responseData['data'] != null) {
           _profile = CustomerProfile.fromJson(responseData['data']);
         } else {
@@ -73,33 +72,31 @@ class CustomerController with ChangeNotifier {
       return null;
     } finally {
       _isLoading = false;
-      notifyListeners(); // Matikan loading spinner di UI
+      notifyListeners();
     }
   }
 
   Future<List<CustomerBill>> getMyBills(String token) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
     try {
       final String activeToken = await _getToken(token);
       final uri = Uri.parse("$baseUrl/bills/me?page=1&quantity=100&search=");
-      
-      final response = await http.get(
-        uri,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": "Bearer $activeToken",
-          "app-key": appKey,
-        },
-      ).timeout(const Duration(seconds: 15));
+
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "Bearer $activeToken",
+              "app-key": appKey,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         List<dynamic> listData = [];
-        
+
         if (responseData['data'] != null) {
           if (responseData['data'] is List) {
             listData = responseData['data'];
@@ -120,13 +117,96 @@ class CustomerController with ChangeNotifier {
       _errorMessage = "Terjadi kesalahan saat memuat tagihan.";
       debugPrint("Error di getMyBills: $e");
       return [];
+    }
+  }
+
+  Future<List<CustomerPayment>> getMyPayments(String token) async {
+    try {
+      final String activeToken = await _getToken(token);
+      final uri = Uri.parse("$baseUrl/payments/me?page=1&quantity=100");
+
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "Bearer $activeToken",
+              "app-key": appKey,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        List<dynamic> listData = [];
+
+        if (responseData['data'] is List) {
+          listData = responseData['data'];
+        } else if (responseData['data']?['results'] != null) {
+          listData = responseData['data']['results'];
+        } else if (responseData['results'] != null) {
+          listData = responseData['results'];
+        }
+
+        _payments =
+            listData.map((item) => CustomerPayment.fromJson(item)).toList();
+        return _payments;
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Error di getMyPayments: $e");
+      return [];
+    }
+  }
+
+  Future<List<CustomerBill>> getBillsWithStatus(String token) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait([
+        getMyBills(token),
+        getMyPayments(token),
+      ]);
+
+      final bills = results[0] as List<CustomerBill>;
+      final payments = results[1] as List<CustomerPayment>;
+
+      final Map<int, CustomerPayment> paymentMap = {
+        for (var p in payments) p.billId: p,
+      };
+
+      for (var bill in bills) {
+        final payment = paymentMap[bill.id];
+        debugPrint(
+          "Bill ID: ${bill.id} → payment status: '${payment?.status}' | payment billId: ${payment?.billId}",
+        );
+        if (payment == null) {
+          bill.status = 'belum_bayar';
+        } else {
+          bill.status = payment.status.trim();
+        }
+      }
+
+      _bills = bills;
+      return _bills;
+    } catch (e) {
+      _errorMessage = "Gagal memuat data tagihan.";
+      debugPrint("Error di getBillsWithStatus: $e");
+      return [];
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<bool> uploadPayment(String billId, String imagePath, String token) async {
+  Future<bool> uploadPayment(
+    String billId,
+    String imagePath,
+    String token,
+  ) async {
     _isLoading = true;
     notifyListeners();
 
@@ -140,7 +220,7 @@ class CustomerController with ChangeNotifier {
         "app-key": appKey,
       });
       request.fields['bill_id'] = billId;
-      
+
       if (imagePath.isNotEmpty && await File(imagePath).exists()) {
         final String extension = imagePath.split('.').last.toLowerCase();
         String mimeType = extension == 'png' ? 'image/png' : 'image/jpeg';
@@ -148,10 +228,10 @@ class CustomerController with ChangeNotifier {
 
         request.files.add(
           await http.MultipartFile.fromPath(
-            'file', 
+            'file',
             imagePath,
-            filename: 'bukti_transfer.$targetExtension', 
-            contentType: MediaType.parse(mimeType),      
+            filename: 'bukti_transfer.$targetExtension',
+            contentType: MediaType.parse(mimeType),
           ),
         );
       } else {
@@ -159,14 +239,16 @@ class CustomerController with ChangeNotifier {
         return false;
       }
 
-      var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      var streamedResponse =
+          await request.send().timeout(const Duration(seconds: 30));
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
         final errorData = json.decode(response.body);
-        _errorMessage = errorData['message'] ?? "Gagal mengunggah bukti pembayaran.";
+        _errorMessage =
+            errorData['message'] ?? "Gagal mengunggah bukti pembayaran.";
         return false;
       }
     } catch (e) {
@@ -178,12 +260,11 @@ class CustomerController with ChangeNotifier {
     }
   }
 
-  // 5. Implementasikan Logika API untuk fungsi updateProfile Customer
   Future<bool> updateProfile({
-    required String token, 
-    required String name, 
-    required String phone, 
-    required String address, 
+    required String token,
+    required String name,
+    required String phone,
+    required String address,
     required String username,
   }) async {
     _isLoading = true;
@@ -192,35 +273,36 @@ class CustomerController with ChangeNotifier {
 
     try {
       final String activeToken = await _getToken(token);
-      final uri = Uri.parse("$baseUrl/customers/update-profile"); // Sesuaikan endpoint dengan dokumentasi API-mu
+      final uri = Uri.parse("$baseUrl/customers/update-profile");
 
-      final response = await http.put(
-        uri,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": "Bearer $activeToken",
-          "app-key": appKey,
-        },
-        body: json.encode({
-          "name": name,
-          "username": username,
-          "phone": phone,
-          "address": address,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .put(
+            uri,
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "Bearer $activeToken",
+              "app-key": appKey,
+            },
+            body: json.encode({
+              "name": name,
+              "username": username,
+              "phone": phone,
+              "address": address,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        
-        // Perbarui data profile lokal dengan data respons terbaru dari backend
         if (responseData['data'] != null) {
           _profile = CustomerProfile.fromJson(responseData['data']);
         }
         return true;
       } else {
         final Map<String, dynamic> errorData = json.decode(response.body);
-        _errorMessage = errorData['message'] ?? "Gagal memperbarui data profil.";
+        _errorMessage =
+            errorData['message'] ?? "Gagal memperbarui data profil.";
         return false;
       }
     } catch (e) {

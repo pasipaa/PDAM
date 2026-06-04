@@ -8,7 +8,7 @@ import 'package:ukl_mobile_uiux/controllers/layanan_controller.dart';
 
 class TambahLayananView extends StatefulWidget {
   final String token;
-  final Map<String, dynamic> dataLayanan; 
+  final Map<String, dynamic> dataLayanan;
 
   const TambahLayananView({
     super.key,
@@ -29,13 +29,20 @@ class _TambahLayananViewState extends State<TambahLayananView> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
+  // 🔹 Mode edit jika dataLayanan tidak kosong dan punya 'id'
+  bool get isEditMode =>
+      widget.dataLayanan.isNotEmpty && widget.dataLayanan['id'] != null;
+
   @override
   void initState() {
     super.initState();
-    namaC.text = widget.dataLayanan['name']?.toString() ?? '';
-    minUsageC.text = widget.dataLayanan['min_usage']?.toString() ?? '';
-    maxUsageC.text = widget.dataLayanan['max_usage']?.toString() ?? '';
-    hargaC.text = widget.dataLayanan['price']?.toString() ?? '';
+    // 🔹 Isi field hanya saat mode edit
+    if (isEditMode) {
+      namaC.text = widget.dataLayanan['name']?.toString() ?? '';
+      minUsageC.text = widget.dataLayanan['min_usage']?.toString() ?? '';
+      maxUsageC.text = widget.dataLayanan['max_usage']?.toString() ?? '';
+      hargaC.text = widget.dataLayanan['price']?.toString() ?? '';
+    }
   }
 
   @override
@@ -53,7 +60,6 @@ class _TambahLayananViewState extends State<TambahLayananView> {
         FilePickerResult? result = await FilePicker.pickFiles(
           type: FileType.image,
         );
-
         if (result != null && result.files.single.path != null) {
           setState(() {
             _selectedImage = File(result.files.single.path!);
@@ -64,7 +70,6 @@ class _TambahLayananViewState extends State<TambahLayananView> {
           source: ImageSource.gallery,
           imageQuality: 80,
         );
-
         if (pickedFile != null) {
           setState(() {
             _selectedImage = File(pickedFile.path);
@@ -76,24 +81,63 @@ class _TambahLayananViewState extends State<TambahLayananView> {
     }
   }
 
-  Future<void> handleUpdateLayanan(LayananController controller) async {
-    if (namaC.text.isEmpty || minUsageC.text.isEmpty || maxUsageC.text.isEmpty || hargaC.text.isEmpty) {
+  bool _validateFields() {
+    if (namaC.text.isEmpty ||
+        minUsageC.text.isEmpty ||
+        maxUsageC.text.isEmpty ||
+        hargaC.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Semua kolom wajib diisi!")),
       );
-      return;
+      return false;
     }
+    return true;
+  }
 
-    final dynamic rawId = widget.dataLayanan['id'];
-    final int serviceId = rawId is int ? rawId : int.parse(rawId.toString());
+  /// 🔹 PROSES TAMBAH DATA BARU — memanggil createLayanan
+  Future<void> handleTambahLayanan(LayananController controller) async {
+    if (!_validateFields()) return;
+
+    final success = await controller.createLayanan(
+      token: widget.token,
+      name: namaC.text,
+      minUsage: int.parse(minUsageC.text),
+      maxUsage: int.parse(maxUsageC.text),
+      price: int.parse(hargaC.text),
+      image: _selectedImage,
+    );
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Layanan berhasil ditambahkan"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Gagal menambahkan layanan"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 🔹 PROSES UPDATE DATA
+  Future<void> handleUpdateLayanan(LayananController controller) async {
+    if (!_validateFields()) return;
+
     final success = await controller.updateLayanan(
-      id: serviceId,
+      id: widget.dataLayanan['id'],
       name: namaC.text,
       minUsage: int.parse(minUsageC.text),
       maxUsage: int.parse(maxUsageC.text),
       price: int.parse(hargaC.text),
       token: widget.token,
-      image: _selectedImage,
     );
 
     if (mounted) {
@@ -104,7 +148,7 @@ class _TambahLayananViewState extends State<TambahLayananView> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -114,8 +158,9 @@ class _TambahLayananViewState extends State<TambahLayananView> {
         );
       }
     }
-  } 
+  }
 
+  /// 🔹 PROSES HAPUS DATA — hanya di mode edit
   void konfirmasiHapus(LayananController controller) {
     showDialog(
       context: context,
@@ -130,12 +175,8 @@ class _TambahLayananViewState extends State<TambahLayananView> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-
-              final dynamic rawId = widget.dataLayanan['id'];
-              final int serviceId = rawId is int ? rawId : int.parse(rawId.toString());
-
               final success = await controller.deleteLayanan(
-                serviceId,
+                widget.dataLayanan['id'],
                 widget.token,
               );
               if (mounted && success) {
@@ -145,7 +186,7 @@ class _TambahLayananViewState extends State<TambahLayananView> {
                     backgroundColor: Colors.green,
                   ),
                 );
-                Navigator.pop(context);
+                Navigator.pop(context, true);
               }
             },
             child: const Text("Hapus", style: TextStyle(color: Colors.red)),
@@ -168,9 +209,9 @@ class _TambahLayananViewState extends State<TambahLayananView> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Ubah Layanan",
-          style: TextStyle(
+        title: Text(
+          isEditMode ? "Ubah Layanan" : "Tambah Layanan",
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -178,10 +219,13 @@ class _TambahLayananViewState extends State<TambahLayananView> {
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xffD32424), size: 26),
-            onPressed: () => konfirmasiHapus(layananController),
-          ),
+          // 🔹 Tombol hapus hanya muncul di mode edit
+          if (isEditMode)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: Color(0xffD32424), size: 26),
+              onPressed: () => konfirmasiHapus(layananController),
+            ),
           const SizedBox(width: 12),
         ],
       ),
@@ -231,7 +275,6 @@ class _TambahLayananViewState extends State<TambahLayananView> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     buildInputField(
                       controller: namaC,
                       title: "Nama Layanan",
@@ -263,6 +306,7 @@ class _TambahLayananViewState extends State<TambahLayananView> {
               ),
             ),
 
+            // 🔹 BOTTOM BUTTONS
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
               child: Column(
@@ -273,13 +317,17 @@ class _TambahLayananViewState extends State<TambahLayananView> {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xffD32424), width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                         backgroundColor: Colors.white,
                       ),
                       onPressed: () => Navigator.pop(context),
                       child: const Text(
                         "Batal",
-                        style: TextStyle(color: Color(0xffD32424), fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: Color(0xffD32424),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -291,20 +339,26 @@ class _TambahLayananViewState extends State<TambahLayananView> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xff0066FF),
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                       onPressed: layananController.isLoading
                           ? null
-                          : () => handleUpdateLayanan(layananController),
+                          : () {
+                              if (isEditMode) {
+                                handleUpdateLayanan(layananController);
+                              } else {
+                                handleTambahLayanan(layananController);
+                              }
+                            },
                       child: layananController.isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                            )
-                          : const Text(
-                              "Simpan Perubahan",
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              isEditMode ? "Simpan Perubahan" : "Tambah Layanan",
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),
@@ -328,7 +382,10 @@ class _TambahLayananViewState extends State<TambahLayananView> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xff2A3238)),
+          style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xff2A3238)),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -337,10 +394,14 @@ class _TambahLayananViewState extends State<TambahLayananView> {
           style: const TextStyle(fontSize: 15, color: Colors.black),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w400),
+            hintStyle: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 14,
+                fontWeight: FontWeight.w400),
             filled: true,
             fillColor: const Color(0xffEAECEF).withOpacity(0.6),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,

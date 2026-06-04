@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:ukl_mobile_uiux/services/tagihan_services.dart';
+
 class TagihanController with ChangeNotifier {
   final TagihanService _tagihanService = TagihanService();
 
@@ -20,37 +21,30 @@ class TagihanController with ChangeNotifier {
 
   Future<void> getBills(String token) async {
     _isLoading = true;
-    _bills = []; 
-    notifyListeners(); 
+    _bills = [];
+    notifyListeners();
 
     try {
       final String tokenLokal = await _getValidToken(token);
-
-      debugPrint("=== GET BILLS API VIA SERVICE ===");
       final response = await _tagihanService.fetchBills(tokenLokal);
-
-      print("=== DEBUG API TAGIHAN ===");
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
-        final List<dynamic> rawList = data['data'] is List ? data['data'] : data; 
-
+        final List<dynamic> rawList =
+            data['data'] is List ? data['data'] : data;
         _bills = rawList;
-        print("Berhasil memuat ${_bills.length} data tagihan.");
       } else {
         final resBody = json.decode(response.body);
-        throw resBody['message'] ?? "Gagal ambil data tagihan (Status ${response.statusCode})";
+        throw resBody['message'] ??
+            "Gagal ambil data tagihan (Status ${response.statusCode})";
       }
     } catch (e, stacktrace) {
-      print("Terjadi ERROR pada Controller (getBills): $e");
-      print("Stacktrace: $stacktrace");
+      debugPrint("ERROR getBills: $e");
+      debugPrint("Stacktrace: $stacktrace");
       rethrow;
     } finally {
       _isLoading = false;
-      notifyListeners(); 
+      notifyListeners();
     }
   }
 
@@ -60,60 +54,43 @@ class TagihanController with ChangeNotifier {
 
     try {
       final String tokenLokal = await _getValidToken(token);
-
-      debugPrint("=== CREATE BILL API VIA SERVICE ===");
       final response = await _tagihanService.createBill(bodyData, tokenLokal);
 
-      print("=== DEBUG SIMPAN DATA ===");
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Data antrean tagihan baru berhasil ditambahkan!");
         return true;
       } else {
-        print("Gagal membuat tagihan baru. Status: ${response.statusCode}");
-        
         final resBody = json.decode(response.body);
-        final String errorMsg = resBody['message'] ?? "Gagal membuat tagihan baru.";
-        
-        throw errorMsg;
+        throw resBody['message'] ?? "Gagal membuat tagihan baru.";
       }
     } catch (e) {
-      print("Terjadi Exception pada createBill: $e");
-      rethrow; 
+      debugPrint("ERROR createBill: $e");
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<bool> updateBill(int billId, Map<String, dynamic> updateData, String token) async {
+  Future<bool> updateBill(
+      int billId, Map<String, dynamic> updateData, String token) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       final String tokenLokal = await _getValidToken(token);
+      final response =
+          await _tagihanService.updateBill(billId, updateData, tokenLokal);
 
-      debugPrint("=== UPDATE BILL API VIA SERVICE ===");
-      final response = await _tagihanService.updateBill(billId, updateData, tokenLokal);
-
-      print("=== DEBUG UPDATE DATA ===");
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-
-      if (response.statusCode == 200 || response.statusCode == 204 || response.statusCode == 201) {
-        print("Data tagihan ID $billId berhasil diperbarui!");
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 201) {
         return true;
       } else {
-        print("Gagal memperbarui data tagihan. Status: ${response.statusCode}");
-        
         final resBody = json.decode(response.body);
-        final String errorMsg = resBody['message'] ?? "Gagal memperbarui data tagihan.";
-        throw errorMsg;
+        throw resBody['message'] ?? "Gagal memperbarui data tagihan.";
       }
     } catch (e) {
-      print("Terjadi Exception pada updateBill: $e");
+      debugPrint("ERROR updateBill: $e");
       rethrow;
     } finally {
       _isLoading = false;
@@ -124,12 +101,7 @@ class TagihanController with ChangeNotifier {
   Future<bool> deleteBill(int billId, String token) async {
     try {
       final String tokenLokal = await _getValidToken(token);
-
-      debugPrint("=== DELETE BILL API VIA SERVICE ===");
       final response = await _tagihanService.deleteBill(billId, tokenLokal);
-
-      print("=== DEBUG HAPUS DATA ===");
-      print("Status Code: ${response.statusCode}");
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         _bills.removeWhere((bill) => bill['id'] == billId);
@@ -140,23 +112,34 @@ class TagihanController with ChangeNotifier {
         throw resBody['message'] ?? "Gagal menghapus data.";
       }
     } catch (e) {
-      print("Error Hapus Data: $e");
+      debugPrint("ERROR deleteBill: $e");
       rethrow;
     }
   }
 
-  Future<bool> verifyBill(Map<String, dynamic> bill, String token) async {
-    if (bill['payments'] == null) {
-      print("Gagal verifikasi: Pelanggan belum mengunggah bukti pembayaran.");
-      throw "Pelanggan belum mengunggah bukti pembayaran.";
+  // Helper: ambil paymentId dari object bill
+  int _extractPaymentId(Map<String, dynamic> bill) {
+    final payments = bill['payments'];
+    int paymentId = 0;
+
+    if (payments is Map<String, dynamic>) {
+      paymentId = int.tryParse(payments['id'].toString()) ?? 0;
     }
 
-    final int paymentId = int.tryParse(bill['payments']['id'].toString()) ?? 0;
+    // Fallback: cek field payment_id langsung di bill
+    if (paymentId == 0 && bill['payment_id'] != null) {
+      paymentId = int.tryParse(bill['payment_id'].toString()) ?? 0;
+    }
+
+    return paymentId;
+  }
+
+  Future<bool> verifyBill(Map<String, dynamic> bill, String token) async {
     final int billId = int.tryParse(bill['id'].toString()) ?? 0;
+    final int paymentId = _extractPaymentId(bill);
 
     if (paymentId == 0) {
-      print("Gagal: ID Pembayaran tidak valid.");
-      throw "ID Pembayaran tidak valid.";
+      throw "Pelanggan belum mengunggah bukti pembayaran.";
     }
 
     _processingBillIds.add(billId);
@@ -164,19 +147,15 @@ class TagihanController with ChangeNotifier {
 
     try {
       final String tokenLokal = await _getValidToken(token);
+      final response =
+          await _tagihanService.verifyPayment(paymentId, tokenLokal);
 
-      debugPrint("=== VERIFY PAYMENT API VIA SERVICE ===");
-      final response = await _tagihanService.verifyPayment(paymentId, tokenLokal);
+      debugPrint(
+          "VERIFY status: ${response.statusCode} | body: ${response.body}");
 
-      print("=== DEBUG VERIFY API ===");
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-
-      _processingBillIds.remove(billId);
-      notifyListeners();
-
-      if (response.statusCode == 200 || response.statusCode == 204 || response.statusCode == 201) {
-        print("Verifikasi pembayaran ID $paymentId berhasil!");
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 201) {
         await getBills(tokenLokal);
         return true;
       } else {
@@ -184,10 +163,49 @@ class TagihanController with ChangeNotifier {
         throw resBody['message'] ?? "Gagal memverifikasi pembayaran.";
       }
     } catch (e) {
+      debugPrint("ERROR verifyBill: $e");
+      rethrow;
+    } finally {
       _processingBillIds.remove(billId);
       notifyListeners();
-      print("Exception Verify: $e");
+    }
+  }
+
+  // ADDED: Tolak pembayaran — DELETE /payments/:paymentId
+  Future<bool> rejectBill(Map<String, dynamic> bill, String token) async {
+    final int billId = int.tryParse(bill['id'].toString()) ?? 0;
+    final int paymentId = _extractPaymentId(bill);
+
+    if (paymentId == 0) {
+      throw "Pelanggan belum mengunggah bukti pembayaran.";
+    }
+
+    _processingBillIds.add(billId);
+    notifyListeners();
+
+    try {
+      final String tokenLokal = await _getValidToken(token);
+      final response =
+          await _tagihanService.rejectPayment(paymentId, tokenLokal);
+
+      debugPrint(
+          "REJECT status: ${response.statusCode} | body: ${response.body}");
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 201) {
+        await getBills(tokenLokal);
+        return true;
+      } else {
+        final resBody = json.decode(response.body);
+        throw resBody['message'] ?? "Gagal menolak pembayaran.";
+      }
+    } catch (e) {
+      debugPrint("ERROR rejectBill: $e");
       rethrow;
+    } finally {
+      _processingBillIds.remove(billId);
+      notifyListeners();
     }
   }
 }

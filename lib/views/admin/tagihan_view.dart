@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ukl_mobile_uiux/controllers/tagihan%20controller.dart';
 import 'package:ukl_mobile_uiux/views/admin/addTagihan_view.dart';
+import 'package:ukl_mobile_uiux/views/admin/detailTagihan_view.dart';
 import 'package:ukl_mobile_uiux/views/admin/edit_tagihan_view.dart';
 import 'package:ukl_mobile_uiux/widgets/admin_bottom_navbar.dart';
 
 class TagihanView extends StatefulWidget {
   final String token;
-
-  const TagihanView({
-    super.key,
-    required this.token,
-  });
+  const TagihanView({super.key, required this.token});
 
   @override
   State<TagihanView> createState() => _TagihanViewState();
@@ -24,14 +21,13 @@ class _TagihanViewState extends State<TagihanView> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TagihanController>().getBills(widget.token);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (context.mounted) {
+        await context.read<TagihanController>().getBills(widget.token);
+      }
     });
-
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
+      setState(() => _searchQuery = _searchController.text.toLowerCase());
     });
   }
 
@@ -41,146 +37,125 @@ class _TagihanViewState extends State<TagihanView> {
     super.dispose();
   }
 
-  Future<void> handleVerify(BuildContext context, Map<String, dynamic> bill) async {
-    final controller = context.read<TagihanController>();
-    bool success = await controller.verifyBill(bill, widget.token);
-
-    if (!context.mounted) return;
-
-    if (success) {
-      await controller.getBills(widget.token);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Berhasil diverifikasi! Status menjadi Lunas."), backgroundColor: Colors.green),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal verifikasi! Bukti belum lengkap."), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  void _showDeleteBottomSheet(BuildContext context, TagihanController provider, int id) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(24, 32, 24, 24 + MediaQuery.of(context).viewInsets.bottom),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Image.asset("assets/delete.png", height: 40, width: 40, errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 40);
-                  }),
-                ),
-                const SizedBox(height: 20),
-                const Text("Anda yakin ingin menghapus?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red), textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: const TextSpan(
-                    style: TextStyle(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w500),
-                    children: [
-                      TextSpan(text: "Data anda akan otomatis "),
-                      TextSpan(text: "hilang permanen", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red, width: 1),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Batal", style: TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff0052CC),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          elevation: 0,
-                        ),
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          bool success = await provider.deleteBill(id, widget.token);
-                          
-                          if (context.mounted) {
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Data tagihan berhasil dihapus"), backgroundColor: Colors.orange)
-                              );
-                              provider.getBills(widget.token);
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Gagal menghapus data tagihan!"), backgroundColor: Colors.red)
-                              );
-                            }
-                          }
-                        },
-                        child: const Text("Hapus", style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   String formatRupiah(dynamic value) {
     final number = int.tryParse(value.toString()) ?? 0;
-    String result = number.toString().replaceAllMapped(
+    final String result = number.toString().replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
     return "Rp $result";
   }
 
-  String getNamaBulan(int month) {
-    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    if (month >= 1 && month <= 12) return bulan[month - 1];
-    return month.toString();
+  String getNamaBulan(int? month) {
+    if (month == null) return '-';
+    const bulan = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    return (month >= 1 && month <= 12) ? bulan[month - 1] : '-';
   }
+
+  /// Struktur API:
+  ///   payments == null              → belum bayar
+  ///   payments is Map, verified false → pending (menunggu verifikasi)
+  ///   payments is Map, verified true  → lunas
+  ///   paid == true (fallback)         → lunas
+  String _getBillStatus(Map<String, dynamic> bill) {
+    final payments = bill['payments'];
+
+    if (payments is Map<String, dynamic>) {
+      final verified = payments['verified'];
+      final isVerified = verified == true || verified == 1 || verified == 'true';
+      return isVerified ? 'lunas' : 'pending';
+    }
+
+    // Fallback: cek field paid / verified_payment langsung di bill
+    final isPaid = bill['paid'] == true ||
+        bill['paid'] == 1 ||
+        bill['paid'] == 'true' ||
+        bill['paid'] == '1' ||
+        bill['verified_payment'] == true;
+
+    if (isPaid) return 'lunas';
+
+    return 'belum_bayar';
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+
+  Future<void> _handleDelete(
+      BuildContext context, Map<String, dynamic> bill) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Hapus Tagihan?",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+            "Data tagihan yang sudah lunas ini akan dihapus permanen."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Batal")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final controller = context.read<TagihanController>();
+      final billId = bill['id'];
+
+      final success = await controller.deleteBill(billId, widget.token);
+
+      if (!context.mounted) return;
+
+      if (success) {
+        await controller.getBills(widget.token);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Tagihan berhasil dihapus."),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Gagal menghapus tagihan. Coba lagi."),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final tagihanController = context.watch<TagihanController>();
 
     final filteredBills = tagihanController.bills.where((bill) {
-      final String rawStatus = (bill['status'] ?? 'belumbayar').toString().toLowerCase().trim();
-      
-      if (rawStatus == 'belumbayar' || rawStatus == 'unpaid') {
-        return false;
-      }
-
       final billIdStr = (bill['id'] ?? '').toString().toLowerCase();
-      final customerIdStr = (bill['customer_id'] ?? '').toString().toLowerCase();
-      final customerNameStr = (bill['customer'] != null && bill['customer']['name'] != null)
-          ? bill['customer']['name'].toString().toLowerCase()
-          : '';
-
+      final customerIdStr =
+          (bill['customer_id'] ?? '').toString().toLowerCase();
+      final customerNameStr =
+          (bill['customer']?['name'] ?? '').toString().toLowerCase();
       return billIdStr.contains(_searchQuery) ||
-             customerIdStr.contains(_searchQuery) ||
-             customerNameStr.contains(_searchQuery);
+          customerIdStr.contains(_searchQuery) ||
+          customerNameStr.contains(_searchQuery);
     }).toList();
 
     return Scaffold(
@@ -188,8 +163,9 @@ class _TagihanViewState extends State<TagihanView> {
       body: SafeArea(
         child: Column(
           children: [
+            // ── Search Bar ──────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -201,193 +177,360 @@ class _TagihanViewState extends State<TagihanView> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     icon: Icon(Icons.search, color: Colors.grey.shade500),
-                    hintText: 'Cari verifikasi berdasarkan nama...',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                    hintText: 'Cari pelanggan berdasarkan nama atau ID...',
+                    hintStyle:
+                        TextStyle(color: Colors.grey.shade400, fontSize: 14),
                     border: InputBorder.none,
-                    suffixIcon: const Icon(Icons.tune, color: Colors.blue),
+                    suffixIcon:
+                        const Icon(Icons.tune, color: Colors.blue),
                   ),
                 ),
               ),
             ),
-            
+
+            // ── List ───────────────────────────────────────────────
             Expanded(
               child: tagihanController.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredBills.isEmpty
                       ? const Center(
-                          child: Text("Tidak ada antrean pembayaran masuk", style: TextStyle(color: Colors.grey, fontSize: 15)),
+                          child: Text(
+                            "Tidak ada data tagihan",
+                            style:
+                                TextStyle(color: Colors.grey, fontSize: 15),
+                          ),
                         )
                       : RefreshIndicator(
-                          onRefresh: () => tagihanController.getBills(widget.token),
+                          onRefresh: () =>
+                              tagihanController.getBills(widget.token),
                           child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             itemCount: filteredBills.length,
                             itemBuilder: (context, index) {
-                              final bill = filteredBills[index];
-                              final int billId = int.tryParse(bill['id'].toString()) ?? 0;
-                              final bool isProcessing = tagihanController.processingBillIds.contains(billId);
-                              
-                              final String rawStatus = (bill['status'] ?? '').toString().toLowerCase().trim();
-                              
-                              final bool isVerified = ['lunas', 'selesai', 'paid', 'verified', 'success'].contains(rawStatus);
+                              final bill =
+                                  filteredBills[index] as Map<String, dynamic>;
+                              final billStatus = _getBillStatus(bill);
 
-                              String statusText = "Pending";
-                              Color statusColor = Colors.amber.shade700;
+                              // ── Status badge ──────────────────────
+                              final String statusText;
+                              final Color statusColor;
+                              final Color dotColor;
 
-                              if (isVerified) {
-                                statusText = "Selesai (Lunas)";
-                                statusColor = Colors.green;
+                              switch (billStatus) {
+                                case 'lunas':
+                                  statusText = "Lunas";
+                                  statusColor = Colors.green.shade600;
+                                  dotColor = Colors.green;
+                                  break;
+                                case 'pending':
+                                  statusText = "Menunggu Verifikasi";
+                                  statusColor = Colors.amber.shade700;
+                                  dotColor = Colors.amber;
+                                  break;
+                                case 'rejected':
+                                  statusText = "Ditolak";
+                                  statusColor = Colors.red.shade600;
+                                  dotColor = Colors.red;
+                                  break;
+                                default:
+                                  statusText = "Belum Bayar";
+                                  statusColor = Colors.red.shade600;
+                                  dotColor = Colors.red;
                               }
 
-                              String customerName = (bill['customer'] != null && bill['customer']['name'] != null)
-                                  ? bill['customer']['name']
-                                  : "Pelanggan ${bill['customer_id']}";
-                              
-                              String tipeLayanan = (bill['service'] != null) ? bill['service']['name'] : "Umum";
-                              String periodeText = "${getNamaBulan(int.tryParse(bill['month'].toString()) ?? 1)} ${bill['year'] ?? ''}";
-                              String pemakaianText = "${bill['usage_value'] ?? '0'} m³";
-                              String hargaText = formatRupiah(bill['amount'] ?? 0);
+                              final String customerName =
+                                  bill['customer']?['name'] ??
+                                      "Pelanggan ${bill['customer_id']}";
+                              final String nik =
+                                  bill['customer']?['customer_number'] ??
+                                      bill['customer']?['nik'] ??
+                                      '-';
+                              final String tipeLayanan =
+                                  bill['service']?['name'] ?? "Umum";
+                              final int? monthInt = int.tryParse(
+                                  bill['month']?.toString() ?? '');
+                              final String periodeText =
+                                  "${getNamaBulan(monthInt)} ${bill['year'] ?? ''}";
+                              final String pemakaianText =
+                                  "${bill['usage_value'] ?? '0'} m³";
+                              final String hargaText = formatRupiah(
+                                  bill['total_price'] ??
+                                      bill['amount'] ??
+                                      0);
+                              final bool isActive =
+                                  bill['customer']?['status'] == 'active' ||
+                                      bill['customer']?['is_active'] == true;
 
                               return Container(
-                                margin: const EdgeInsets.only(bottom: 16),
+                                margin: const EdgeInsets.only(bottom: 14),
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.grey.shade200),
+                                  border: Border.all(
+                                      color: Colors.grey.shade200),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.grey.withOpacity(0.05),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
+                                      color:
+                                          Colors.black.withOpacity(0.04),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
                                     ),
                                   ],
                                 ),
                                 child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
+                                    // ── Header ────────────────────────
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         CircleAvatar(
-                                          radius: 22,
-                                          backgroundColor: Colors.grey.shade300,
-                                          child: const Icon(Icons.face, color: Colors.grey),
+                                          radius: 24,
+                                          backgroundColor:
+                                              Colors.grey.shade200,
+                                          child: const Icon(Icons.person,
+                                              color: Colors.grey, size: 26),
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 customerName,
-                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                    fontSize: 14),
                                               ),
                                               const SizedBox(height: 2),
                                               Text(
-                                                'No. Meter : ${bill['measurement_number'] ?? '-'}',
-                                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                                "NIK : $nik",
+                                                style: TextStyle(
+                                                    color:
+                                                        Colors.grey.shade500,
+                                                    fontSize: 11),
                                               ),
                                               const SizedBox(height: 6),
-                                              Row(
+                                              Wrap(
+                                                spacing: 6,
                                                 children: [
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.blue,
-                                                      borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                    child: Text(
-                                                      tipeLayanan,
-                                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                    decoration: BoxDecoration(
-                                                      color: statusColor,
-                                                      borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                    child: Text(
-                                                      statusText,
-                                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                                    ),
+                                                  _badge(tipeLayanan,
+                                                      Colors.blue),
+                                                  _badge(
+                                                    isActive
+                                                        ? "Aktif"
+                                                        : "Nonaktif",
+                                                    isActive
+                                                        ? Colors.green
+                                                        : Colors.red,
                                                   ),
                                                 ],
                                               ),
                                             ],
                                           ),
                                         ),
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: statusColor,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        )
+                                        // Dot status + label
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Container(
+                                              width: 11,
+                                              height: 11,
+                                              decoration: BoxDecoration(
+                                                color: dotColor,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              statusText,
+                                              style: TextStyle(
+                                                color: statusColor,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ],
                                     ),
-                                    
-                                    const SizedBox(height: 16),
-                                    
-                                    _buildInfoRow('Periode', periodeText),
+
+                                    const SizedBox(height: 14),
+                                    const Divider(height: 1, thickness: 0.5),
+                                    const SizedBox(height: 12),
+
+                                    // ── Detail rows ──────────────────
+                                    _infoRow("Periode", periodeText),
                                     const SizedBox(height: 6),
-                                    _buildInfoRow('Pemakaian', pemakaianText),
+                                    _infoRow("Pemakaian", pemakaianText),
                                     const SizedBox(height: 6),
-                                    _buildInfoRow('Harga', hargaText, isPrice: true),
-                                    
-                                    const SizedBox(height: 16),
-                                    
+                                    _infoRow("Harga", hargaText,
+                                        isPrice: true),
+
+                                    const SizedBox(height: 14),
+
+                                    // ── Action buttons ───────────────
                                     Row(
                                       children: [
+                                        // Tombol EDIT (selalu ada)
                                         Expanded(
                                           child: OutlinedButton(
-                                            onPressed: isVerified ? null : () {
+                                            onPressed: () {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) => EditTagihanView(
+                                                  builder: (_) =>
+                                                      EditTagihanView(
                                                     token: widget.token,
                                                     billData: bill,
                                                   ),
                                                 ),
-                                              );
+                                              ).then((_) {
+                                                if (context.mounted) {
+                                                  context
+                                                      .read<TagihanController>()
+                                                      .getBills(widget.token);
+                                                }
+                                              });
                                             },
                                             style: OutlinedButton.styleFrom(
-                                              side: BorderSide(color: isVerified ? Colors.grey.shade300 : const Color(0xFF0F52BA)),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              side: const BorderSide(
+                                                  color: Color(0xFF0F52BA)),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          8)),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 11),
                                             ),
-                                            child: Text('Edit', style: TextStyle(color: isVerified ? Colors.grey : const Color(0xFF0F52BA), fontWeight: FontWeight.bold)),
+                                            child: const Text(
+                                              "Edit",
+                                              style: TextStyle(
+                                                  color: Color(0xFF0F52BA),
+                                                  fontWeight:
+                                                      FontWeight.bold),
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        
+                                        const SizedBox(width: 10),
+
+                                        // Tombol kanan berdasarkan status
                                         Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: isProcessing
-                                                ? null
-                                                : isVerified
-                                                    ? () => _showDeleteBottomSheet(context, tagihanController, billId)
-                                                    : () => handleVerify(context, bill),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: isVerified ? const Color(0xFFE50000) : const Color(0xFF0F52BA),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
-                                              elevation: 0,
-                                            ),
-                                            child: isProcessing
-                                                ? const SizedBox(
-                                                    height: 18,
-                                                    width: 18,
-                                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                                  )
-                                                : Text(
-                                                    isVerified ? 'Hapus Riwayat' : 'Verifikasi Pembayaran',
-                                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                          child: billStatus == 'lunas'
+                                              // ── Lunas → Hapus ──
+                                              ? ElevatedButton(
+                                                  onPressed: () =>
+                                                      _handleDelete(
+                                                          context, bill),
+                                                  style: ElevatedButton
+                                                      .styleFrom(
+                                                    backgroundColor:
+                                                        Colors.red.shade600,
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8)),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 11),
+                                                    elevation: 0,
                                                   ),
-                                          ),
+                                                  child: const Text(
+                                                    "Hapus",
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                                  ),
+                                                )
+                                              : billStatus == 'pending'
+                                                  // ── Pending → Verifikasi ──
+                                                  ? ElevatedButton(
+                                                      onPressed: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                DetailTagihanView(
+                                                              token:
+                                                                  widget.token,
+                                                              bill: bill,
+                                                            ),
+                                                          ),
+                                                        ).then((result) {
+                                                          if ((result == 'verified' ||
+                                                                  result == 'rejected') &&
+                                                              context.mounted) {
+                                                            context
+                                                                .read<TagihanController>()
+                                                                .getBills(widget.token);
+                                                          }
+                                                        });
+                                                      },
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                                0xFF0F52BA),
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8)),
+                                                        padding: const EdgeInsets
+                                                            .symmetric(
+                                                            vertical: 11),
+                                                        elevation: 0,
+                                                      ),
+                                                      child: const Text(
+                                                        "Verifikasi",
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
+                                                      ),
+                                                    )
+                                                  // ── Belum bayar / rejected → disabled ──
+                                                  : ElevatedButton(
+                                                      onPressed: null,
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            Colors.grey
+                                                                .shade300,
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8)),
+                                                        padding: const EdgeInsets
+                                                            .symmetric(
+                                                            vertical: 11),
+                                                        elevation: 0,
+                                                      ),
+                                                      child: Text(
+                                                        billStatus ==
+                                                                'rejected'
+                                                            ? "Ditolak"
+                                                            : "Belum Bayar",
+                                                        style: TextStyle(
+                                                            color: Colors
+                                                                .grey.shade600,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
+                                                      ),
+                                                    ),
                                         ),
                                       ],
                                     ),
@@ -401,36 +544,53 @@ class _TagihanViewState extends State<TagihanView> {
           ],
         ),
       ),
-      
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => AddTagihanView(token: widget.token)),
-          );
+            MaterialPageRoute(
+                builder: (_) => TambahTagihanView(token: widget.token)),
+          ).then((result) {
+            if (result == true && context.mounted) {
+              context.read<TagihanController>().getBills(widget.token);
+            }
+          });
         },
         backgroundColor: Colors.blueAccent,
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 32),
       ),
-      bottomNavigationBar: CustomBottomNavbar(token: widget.token, currentIndex: 3),
+      bottomNavigationBar:
+          CustomBottomNavbar(token: widget.token, currentIndex: 3),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isPrice = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-        Text(
-          value,
-          style: TextStyle(
-            color: isPrice ? Colors.blue : Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: isPrice ? 15 : 13,
+  // ── Widget helpers ─────────────────────────────────────────────────────────
+
+  Widget _badge(String text, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+            color: color, borderRadius: BorderRadius.circular(4)),
+        child: Text(text,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold)),
+      );
+
+  Widget _infoRow(String label, String value, {bool isPrice = false}) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          Text(
+            value,
+            style: TextStyle(
+              color: isPrice ? const Color(0xFF0F52BA) : Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: isPrice ? 15 : 13,
+            ),
           ),
-        ),
-      ],
-    );
-  }
+        ],
+      );
 }

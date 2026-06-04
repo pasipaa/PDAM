@@ -4,11 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ukl_mobile_uiux/controllers/customers/customers_controller.dart';
 import 'package:ukl_mobile_uiux/views/login_view.dart';
 import 'package:ukl_mobile_uiux/widgets/cust_bottom_navbar.dart';
-import 'package:ukl_mobile_uiux/views/login_role_view.dart'; 
-import 'package:ukl_mobile_uiux/views/customers/CustEditProfile_view.dart'; 
+import 'package:ukl_mobile_uiux/views/login_role_view.dart';
+import 'package:ukl_mobile_uiux/views/customers/CustEditProfile_view.dart';
 
 class ProfilCustView extends StatefulWidget {
-  final String token; 
+  final String token;
 
   const ProfilCustView({super.key, required this.token});
 
@@ -17,24 +17,28 @@ class ProfilCustView extends StatefulWidget {
 }
 
 class _ProfilCustViewState extends State<ProfilCustView> {
+  // FIX: inisialisasi langsung saat deklarasi — tidak perlu late, tidak ada risiko LateInitializationError
+  final CustomerController _controller = CustomerController();
 
   @override
   void initState() {
     super.initState();
-    // Mengambil data profile setelah frame pertama selesai dirender
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Mengakses controller yang di-provide oleh ChangeNotifierProvider di bawah
-        Provider.of<CustomerController>(context, listen: false).getMyProfile(widget.token);
+        _controller.getMyProfile(widget.token);
       }
     });
   }
 
-  // _customerController.dispose() DIAPUS agar tidak merusak lifecycle state provider
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   Future<void> _refreshProfile() async {
     if (mounted) {
-      await Provider.of<CustomerController>(context, listen: false).getMyProfile(widget.token);
+      await _controller.getMyProfile(widget.token);
     }
   }
 
@@ -60,11 +64,13 @@ class _ProfilCustViewState extends State<ProfilCustView> {
 
   @override
   Widget build(BuildContext context) {
-    // Menggunakan constructor default () agar Provider otomatis mengurus lifecycle (create & dispose)
-    return ChangeNotifierProvider<CustomerController>(
-      create: (_) => CustomerController(),
+    // FIX: ChangeNotifierProvider.value pakai _controller yang sudah dibuat di initState
+    // Jangan pakai create: (_) => CustomerController() di dalam build — itu bikin
+    // controller baru setiap rebuild dan initState tidak bisa akses provider-nya
+    return ChangeNotifierProvider<CustomerController>.value(
+      value: _controller,
       child: Scaffold(
-        backgroundColor: const Color(0xffF4F8FB), 
+        backgroundColor: const Color(0xffF4F8FB),
         body: Consumer<CustomerController>(
           builder: (context, controller, child) {
             // 1. STATE LOADING
@@ -113,7 +119,8 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                         onPressed: _refreshProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff3B82F6),
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -140,40 +147,42 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                 Positioned(
                   top: 180,
                   left: -40,
-                  child: _buildBgCircle(const Color(0xff60A5FA).withOpacity(0.3), 140, isEllipse: true),
+                  child: _buildBgCircle(
+                      const Color(0xff60A5FA).withOpacity(0.3), 140,
+                      isEllipse: true),
                 ),
                 Positioned(
                   top: 140,
                   right: 50,
-                  child: _buildBgCircle(const Color(0xff60A5FA).withOpacity(0.3), 100),
+                  child: _buildBgCircle(
+                      const Color(0xff60A5FA).withOpacity(0.3), 100),
                 ),
                 Positioned(
                   top: 260,
                   right: -55,
-                  child: _buildBgCircle(const Color(0xff3B82F6), 120),
+                  child:
+                      _buildBgCircle(const Color(0xff3B82F6), 120),
                 ),
-
                 SafeArea(
                   child: RefreshIndicator(
                     onRefresh: _refreshProfile,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 20),
                       child: Column(
                         children: [
                           const SizedBox(height: 30),
-                          
                           Text(
-                            profil.name, 
+                            profil.name,
                             style: const TextStyle(
-                              fontSize: 22, 
-                              fontWeight: FontWeight.bold, 
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                               color: Color(0xff063A69),
                             ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 25),
-                          
                           Stack(
                             children: [
                               Container(
@@ -190,7 +199,8 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                                 child: const CircleAvatar(
                                   radius: 75,
                                   backgroundColor: Colors.blueGrey,
-                                  backgroundImage: AssetImage('assets/images/stitch_profile.png'), 
+                                  backgroundImage: AssetImage(
+                                      'assets/images/stitch_profile.png'),
                                 ),
                               ),
                               Positioned(
@@ -199,18 +209,19 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: const BoxDecoration(
-                                    color: Color(0xff3B82F6), 
+                                    color: Color(0xff3B82F6),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                                  child: const Icon(Icons.edit,
+                                      color: Colors.white, size: 16),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 24),
-
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 8),
                             decoration: BoxDecoration(
                               color: const Color(0xff3B82F6),
                               borderRadius: BorderRadius.circular(10),
@@ -218,30 +229,33 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                             child: const Text(
                               "Customer",
                               style: TextStyle(
-                                color: Colors.white, 
-                                fontWeight: FontWeight.bold, 
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
                             ),
                           ),
                           const SizedBox(height: 35),
-
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade100, width: 1.5),
+                              border: Border.all(
+                                  color: Colors.grey.shade100, width: 1.5),
                             ),
                             child: Column(
                               children: [
-                                _buildProfileRow("Username", profil.username, isBlueText: true), 
+                                _buildProfileRow("Username", profil.username,
+                                    isBlueText: true),
                                 _buildDivider(),
-                                _buildProfileRow("No.Telepon", profil.phone, isBlueText: true),
+                                _buildProfileRow("No.Telepon", profil.phone,
+                                    isBlueText: true),
                                 _buildDivider(),
                                 _buildProfileRow("Alamat", profil.address),
                                 _buildDivider(),
-                                _buildProfileRow("No. Pelanggan (NIK)", profil.customerNumber),
+                                _buildProfileRow(
+                                    "No. Pelanggan (NIK)", profil.customerNumber),
                               ],
                             ),
                           ),
@@ -253,32 +267,37 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                             height: 50,
                             child: OutlinedButton.icon(
                               onPressed: () async {
-                                // Kirim instance controller yang aktif saat ini ke page edit profil
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => ChangeNotifierProvider<CustomerController>.value(
-                                      value: controller, 
-                                      child: CustEditProfileView(token: widget.token),
+                                    builder: (_) =>
+                                        ChangeNotifierProvider<CustomerController>.value(
+                                      value: controller,
+                                      child: CustEditProfileView(
+                                        token: widget.token,
+                                        controller: controller,
+                                      ),
                                     ),
                                   ),
                                 );
-                                // Refresh data secara otomatis setelah kembali dari halaman edit
                                 _refreshProfile();
                               },
-                              icon: const Icon(Icons.edit_square, color: Color(0xff063A69), size: 18),
+                              icon: const Icon(Icons.edit_square,
+                                  color: Color(0xff063A69), size: 18),
                               label: const Text(
-                                "Edit Profil", 
+                                "Edit Profil",
                                 style: TextStyle(
-                                  color: Color(0xff063A69), 
-                                  fontWeight: FontWeight.bold, 
+                                  color: Color(0xff063A69),
+                                  fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade200, width: 1.2),
+                                side: BorderSide(
+                                    color: Colors.grey.shade200, width: 1.2),
                                 backgroundColor: const Color(0xffF8FAFC),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
@@ -289,20 +308,53 @@ class _ProfilCustViewState extends State<ProfilCustView> {
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton.icon(
-                              onPressed: _logout,
-                              icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16)),
+                                    title: const Text("Keluar dari Akun?",
+                                        style: TextStyle(fontWeight: FontWeight.bold)),
+                                    content: const Text(
+                                        "Kamu akan keluar dari akun ini. Yakin ingin melanjutkan?"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, false),
+                                        child: const Text("Batal",
+                                            style: TextStyle(color: Colors.grey)),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xffD90429),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8)),
+                                          elevation: 0,
+                                        ),
+                                        child: const Text("Keluar",
+                                            style: TextStyle(color: Colors.white)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed == true) _logout();
+                              },
+                              icon: const Icon(Icons.logout_rounded,
+                                  color: Colors.white, size: 18),
                               label: const Text(
-                                "Keluar dari Akun", 
+                                "Keluar dari Akun",
                                 style: TextStyle(
-                                  color: Colors.white, 
-                                  fontWeight: FontWeight.bold, 
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xffD90429), 
+                                backgroundColor: const Color(0xffD90429),
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
@@ -317,7 +369,7 @@ class _ProfilCustViewState extends State<ProfilCustView> {
           },
         ),
         bottomNavigationBar: CustomCustomerBottomNavbar(
-          token: widget.token, 
+          token: widget.token,
           currentIndex: 3,
         ),
       ),
@@ -327,10 +379,12 @@ class _ProfilCustViewState extends State<ProfilCustView> {
   Widget _buildBgCircle(Color color, double size, {bool isEllipse = false}) {
     return Container(
       width: isEllipse ? size - 60 : size,
-      height: isEllipse ? size : size,
+      height: size,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: isEllipse ? const BorderRadius.all(Radius.elliptical(40, 70)) : null,
+        borderRadius: isEllipse
+            ? const BorderRadius.all(Radius.elliptical(40, 70))
+            : null,
         shape: isEllipse ? BoxShape.rectangle : BoxShape.circle,
       ),
     );
@@ -340,28 +394,31 @@ class _ProfilCustViewState extends State<ProfilCustView> {
     return const Divider(height: 1, thickness: 1, color: Color(0xffF1F5F9));
   }
 
-  Widget _buildProfileRow(String label, String value, {bool isBlueText = false}) {
+  Widget _buildProfileRow(String label, String value,
+      {bool isBlueText = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            label, 
+            label,
             style: const TextStyle(
-              fontWeight: FontWeight.bold, 
-              color: Color(0xff1E293B), 
+              fontWeight: FontWeight.bold,
+              color: Color(0xff1E293B),
               fontSize: 13,
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              value.isEmpty ? "-" : value, 
+              value.isEmpty ? "-" : value,
               textAlign: TextAlign.end,
               style: TextStyle(
-                color: isBlueText ? const Color(0xff0A59D1) : const Color(0xff063A69), 
-                fontWeight: FontWeight.w600, 
+                color: isBlueText
+                    ? const Color(0xff0A59D1)
+                    : const Color(0xff063A69),
+                fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
               overflow: TextOverflow.ellipsis,

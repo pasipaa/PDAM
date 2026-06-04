@@ -15,36 +15,42 @@ class TagihanService {
 
   final Duration _timeoutDuration = const Duration(seconds: 15);
 
-  Future<http.Response> _safeRequest(Future<http.Response> Function() requestCall) async {
+  Future<http.Response> _safeRequest(
+      Future<http.Response> Function() requestCall) async {
     try {
       return await requestCall().timeout(_timeoutDuration);
     } on SocketException {
       return http.Response(
-        json.encode({"message": "Koneksi internet terputus. Silakan periksa jaringan Anda."}),
+        json.encode({
+          "message":
+              "Koneksi internet terputus. Silakan periksa jaringan Anda."
+        }),
         503,
         headers: {"content-type": "application/json"},
       );
     } on TimeoutException {
       return http.Response(
-        json.encode({"message": "Waktu tunggu habis (Timeout). Server sedang sibuk."}),
-        408, // Request Timeout
+        json.encode(
+            {"message": "Waktu tunggu habis (Timeout). Server sedang sibuk."}),
+        408,
         headers: {"content-type": "application/json"},
       );
     } catch (e) {
-      // Menangkap error tidak terduga lainnya
       return http.Response(
         json.encode({"message": "Terjadi kesalahan jaringan sistem: $e"}),
-        500, // Internal Server Error
+        500,
         headers: {"content-type": "application/json"},
       );
     }
   }
+
   Future<http.Response> fetchBills(String token) async {
     final uri = Uri.parse("${url.BaseUrl}/bills");
     return await _safeRequest(() => http.get(uri, headers: _getHeaders(token)));
   }
 
-  Future<http.Response> createBill(Map<String, dynamic> bodyData, String token) async {
+  Future<http.Response> createBill(
+      Map<String, dynamic> bodyData, String token) async {
     final uri = Uri.parse("${url.BaseUrl}/bills");
     return await _safeRequest(() => http.post(
           uri,
@@ -53,7 +59,8 @@ class TagihanService {
         ));
   }
 
-  Future<http.Response> updateBill(int billId, Map<String, dynamic> updateData, String token) async {
+  Future<http.Response> updateBill(
+      int billId, Map<String, dynamic> updateData, String token) async {
     final uri = Uri.parse("${url.BaseUrl}/bills/$billId");
     return await _safeRequest(() => http.patch(
           uri,
@@ -64,11 +71,30 @@ class TagihanService {
 
   Future<http.Response> deleteBill(int billId, String token) async {
     final uri = Uri.parse("${url.BaseUrl}/bills/$billId");
-    return await _safeRequest(() => http.delete(uri, headers: _getHeaders(token)));
+    return await _safeRequest(
+        () => http.delete(uri, headers: _getHeaders(token)));
   }
 
+  // FIXED: PATCH /payments/:id — tanpa body, backend langsung set verified=true
   Future<http.Response> verifyPayment(int paymentId, String token) async {
     final uri = Uri.parse("${url.BaseUrl}/payments/$paymentId");
-    return await _safeRequest(() => http.patch(uri, headers: _getHeaders(token)));
+    return await _safeRequest(() => http.patch(
+          uri,
+          headers: _getHeaders(token),
+          // Tidak ada body — sesuai Postman collection
+        ));
+  }
+
+  // ADDED: DELETE /payments/:id — untuk tolak/reject pembayaran
+  Future<http.Response> rejectPayment(int paymentId, String token) async {
+    final uri = Uri.parse("${url.BaseUrl}/payments/$paymentId");
+    return await _safeRequest(
+        () => http.delete(uri, headers: _getHeaders(token)));
+  }
+
+  // ADDED: GET /payment-proof/:filename — ambil bukti bayar
+  // Kembalikan Uri saja (untuk ditampilkan di Image.network)
+  String getPaymentProofUrl(String filename) {
+    return "${url.BaseUrl}/payment-proof/$filename";
   }
 }
